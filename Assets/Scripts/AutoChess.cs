@@ -134,7 +134,9 @@ public class AutoChess : MonoBehaviour
     float t;
     string msg = "";
     readonly List<Rect> ui = new List<Rect>(); // 이번 OnGUI에서 그린 UI 영역(맵 클릭 제외용)
-    GUIStyle center, card, wrap, titleStyle, smallStyle;
+    GUIStyle center, card, wrap, titleStyle, smallStyle, helpStyle;
+    bool helpOpen; Vector2 helpScroll;
+    const string HelpKey = "AutoChessHelpSeen"; // 처음 실행할 때만 도움말을 자동으로 띄우기 위한 기록
 
     [RuntimeInitializeOnLoadMethod]
     static void Boot()
@@ -162,6 +164,7 @@ public class AutoChess : MonoBehaviour
         }
         AutoChessVisualManager.I.BuildStage(3.5f, (N - 1 + BenchZ) / 2, 10.5f, N, N / 2 - .5f); // 경계선·바닥 받침·배경(있을 때만)
         Reset();
+        if (PlayerPrefs.GetInt(HelpKey, 0) == 0) ToggleHelp(); // 처음 실행하면 도움말을 한 번 보여 준다
     }
 
     // 3D 타일 메쉬(Resources/Visuals/Map/Map_Tile_NN)가 있으면 그것을, 없으면 기본 큐브 타일을 놓는다
@@ -188,7 +191,7 @@ public class AutoChess : MonoBehaviour
         foreach (var u in us) Destroy(u.go);
         us.Clear();
         gold = 10; life = 3; round = 1; over = false; cleared = false; level = 1; xp = 0; shopOpen = false; msg = "";
-        winStreak = 0; incomeLog = "";
+        winStreak = 0; incomeLog = ""; helpOpen = false;
         Time.timeScale = 1f; fts.Clear(); banner = ""; // 결과창에서 멈췄던 시간·연출 초기화
         Prep();
     }
@@ -687,6 +690,8 @@ public class AutoChess : MonoBehaviour
     // 상단: 상태줄+난이도 / 하단: 경험치·전투 시작·상점 열기 / 팝업: 상점 / 오른쪽: 유닛 정보 / 왼쪽: 시너지
     void OnGUI()
     {
+        var ev = Event.current;
+        if (ev.type == EventType.KeyDown && !over && (ev.keyCode == KeyCode.H || (helpOpen && ev.keyCode == KeyCode.Escape))) { ToggleHelp(); ev.Use(); } // H=도움말 열기/닫기, ESC=닫기
         DrawUI();
         DrawFloatTexts(); // 패널 위에 덮어 그림
         DrawBanner();
@@ -727,6 +732,7 @@ public class AutoChess : MonoBehaviour
             if (GUI.Button(new Rect(r.x + r.width / 2 - 70, r.y + 78, 140, 36), "[다시 하기]")) Reset();
             return;
         }
+        if (helpOpen) { DrawHelp(W, H); return; } // 도움말: 게임을 멈추고 다른 조작을 막는다
 
         // 하단 바
         ui.Add(new Rect(0, H - 52, W, 52));
@@ -742,11 +748,69 @@ public class AutoChess : MonoBehaviour
         if (GUI.Button(new Rect(W / 2 - 70, H - 44, 140, 36), "전투 시작")) StartBattle();
         if (GUI.Button(new Rect(W - 140, H - 44, 130, 36), shopOpen ? "상점 닫기" : "상점 열기")) shopOpen = !shopOpen;
         GUI.enabled = true;
+        if (GUI.Button(new Rect(150, H - 44, 100, 36), "도움말 (H)")) ToggleHelp(); // 전투 중에도 열 수 있다(열면 게임이 멈춤)
 
         if (shopOpen && !battle) DrawShop(W); // 상점이 열려 있으면 옆 패널은 숨김(겹침 방지)
         else { DrawSynergy(); DrawInfo(W); }
         HandleMouse();
     }
+
+    // ---------------- 도움말 ----------------
+    void ToggleHelp()
+    {
+        helpOpen = !helpOpen;
+        Time.timeScale = helpOpen || over ? 0f : 1f; // 열려 있는 동안 전투도 멈춘다
+        if (!helpOpen) { PlayerPrefs.SetInt(HelpKey, 1); PlayerPrefs.Save(); }
+    }
+
+    void DrawHelp(float W, float H)
+    {
+        ui.Add(new Rect(0, 0, W, H));
+        GUI.color = new Color(0, 0, 0, .6f); GUI.DrawTexture(new Rect(0, 0, W, H), Texture2D.whiteTexture); GUI.color = Color.white;
+        var r = new Rect(W / 2 - 330, 28, 660, H - 62);
+        GUI.Box(r, "");
+        titleStyle ??= new GUIStyle(GUI.skin.label);
+        titleStyle.alignment = TextAnchor.MiddleCenter; titleStyle.fontStyle = FontStyle.Bold; titleStyle.fontSize = 18; titleStyle.wordWrap = false; titleStyle.normal.textColor = Color.white;
+        GUI.Label(new Rect(r.x, r.y + 8, r.width, 30), "도움말 — 톡톡이의 시험", titleStyle);
+        helpStyle ??= new GUIStyle(GUI.skin.label);
+        helpStyle.wordWrap = true; helpStyle.richText = true; helpStyle.fontSize = 13; helpStyle.alignment = TextAnchor.UpperLeft; helpStyle.normal.textColor = Color.white;
+        var view = new Rect(r.x + 16, r.y + 46, r.width - 32, r.height - 106);
+        float cw = view.width - 22, ch = helpStyle.CalcHeight(new GUIContent(HelpText), cw) + 10;
+        helpScroll = GUI.BeginScrollView(view, helpScroll, new Rect(0, 0, cw, ch)); // 마우스 휠로 스크롤
+        GUI.Label(new Rect(0, 0, cw, ch), HelpText, helpStyle);
+        GUI.EndScrollView();
+        if (GUI.Button(new Rect(r.x + r.width / 2 - 80, r.y + r.height - 46, 160, 34), "닫기 (H / ESC)")) ToggleHelp();
+    }
+
+    const string HelpText =
+        "<b><color=#ffd966>목표</color></b>\n" +
+        "30라운드(1-1 ~ 3-10)를 목숨 3개로 버텨 마지막 보스(3-10)를 쓰러뜨리면 클리어입니다. 전투에서 지면 목숨이 1 줄고, 0이 되면 게임 오버입니다. 10·20·30라운드는 보스입니다.\n\n" +
+        "<b><color=#ffd966>한 라운드의 흐름</color></b>\n" +
+        "① 준비 단계: 유닛을 사고 배치합니다.  ② [전투 시작]: 유닛들이 자동으로 싸웁니다.  ③ 정산: 이기든 지든 골드를 받고 다음 라운드로 넘어갑니다.\n\n" +
+        "<b><color=#ffd966>유닛 사기 · 배치하기</color></b>\n" +
+        "• 오른쪽 아래 [상점 열기]에서 카드를 눌러 구매합니다. 가격은 유닛 코스트(1~5골드)입니다. [리롤 1G]는 상점 5칸을 새로 뽑습니다.\n" +
+        "• 산 유닛은 맨 아래 <b>대기석(8칸)</b>에 생깁니다. 유닛을 클릭한 뒤 빈 칸을 클릭하거나, 끌어다 놓으면 이동합니다.\n" +
+        "• 전장에는 <b>아래쪽 4줄</b>(내 진영)에만 놓을 수 있고, 전장에 놓을 수 있는 수는 <b>레벨</b>과 같습니다. 위쪽 4줄은 적 진영입니다.\n" +
+        "• 전투 중에는 유닛을 옮길 수 없습니다(판매와 정보 보기는 가능).\n\n" +
+        "<b><color=#ffd966>레벨과 경험치</color></b>\n" +
+        "• 레벨이 곧 출전 가능한 유닛 수입니다(최대 10). 라운드가 끝나면 +2 경험치, 왼쪽 아래 [경험치 (4G)]를 누르면 +4 경험치를 삽니다.\n" +
+        "• 레벨이 높을수록 상점에서 비싼 유닛이 잘 나옵니다. 상점 위쪽 오른쪽에 레벨별 확률이 표시됩니다.\n\n" +
+        "<b><color=#ffd966>합성 (별 올리기)</color></b>\n" +
+        "같은 유닛 3개가 모이면(필드·대기석 상관없이) 자동으로 1개로 합쳐지며 ★이 올라 훨씬 강해집니다(최대 ★★★). 대기석이 가득 차 있어도, 사면 바로 합성되는 유닛은 살 수 있습니다.\n\n" +
+        "<b><color=#ffd966>시너지</color></b>\n" +
+        "전장에 놓인 유닛 중 <b>서로 다른 유닛</b>이 같은 종족·직업이면 보너스를 받습니다. 2종 +15% · 4종 +30% · 6종 +50% (체력 또는 공격력). 왼쪽 패널에 켜진 시너지가 위에, 거의 켜질 시너지(1/2)가 흐리게 아래에 나옵니다. 적에게도 적용됩니다.\n\n" +
+        "<b><color=#ffd966>골드 (라운드 정산)</color></b>\n" +
+        "• 기본: 1-1~1-3은 2·3·4골드, 1-4부터는 매 라운드 5골드\n" +
+        "• 이자: 정산 때 가진 골드 10당 +1골드 (최대 +5골드). 골드를 모아 두면 이득입니다. 왼쪽 위에 현재 이자가 표시됩니다.\n" +
+        "• 승리하면 +1골드, 연승하면 추가: 2~3연승 +1 · 4~5연승 +2 · 6연승 이상 +3 (지면 연승이 끊깁니다)\n\n" +
+        "<b><color=#ffd966>판매</color></b>\n" +
+        "유닛을 클릭하면 오른쪽에 정보창이 뜨고 [유닛 판매]로 팝니다(전투 중에도 가능). 환급은 합성에 들어간 원가 기준 ★ 100% · ★★ 75% · ★★★ 70%입니다.\n\n" +
+        "<b><color=#ffd966>전투</color></b>\n" +
+        "• 유닛은 가까운 적을 자동으로 공격하고, 마나(체력바 밑의 파란 막대)가 가득 차면 스킬을 씁니다. 스킬 설명은 상점 카드와 유닛 정보창에 있습니다.\n" +
+        "• 한쪽이 전멸하면 끝납니다. 100초가 넘으면 남은 체력 합이 많은 쪽이 이깁니다.\n" +
+        "• 난이도(오른쪽 위)는 준비 단계에서 바꿀 수 있고, 적의 체력·공격력이 쉬움 ×0.85 · 보통 ×1.0 · 어려움 ×1.25가 됩니다.\n\n" +
+        "<b><color=#ffd966>조작 요약</color></b>\n" +
+        "클릭 = 선택·정보  /  끌어서 놓기 = 이동·교환  /  H = 도움말 열기·닫기  /  ESC = 도움말 닫기";
 
     static string Tag(int tag) => tag < RaceN ? RaceName[tag] : JobName[tag - RaceN];
     static string TagsOf(UD d) => d.race < 0 ? "-" : RaceName[d.race] + " / " + JobName[d.job];
