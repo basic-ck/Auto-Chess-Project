@@ -137,6 +137,7 @@ public class AutoChess : MonoBehaviour
     GUIStyle center, card, wrap, titleStyle, smallStyle, helpStyle;
     bool helpOpen; Vector2 helpScroll;
     const string HelpKey = "AutoChessHelpSeen"; // 처음 실행할 때만 도움말을 자동으로 띄우기 위한 기록
+    const string GameTitle = "정령과 거인의 전쟁"; // 가제. 최종 이름이 정해지면 이 한 줄만 바꾸면 도움말 제목·클리어 문구에 반영된다
 
     [RuntimeInitializeOnLoadMethod]
     static void Boot()
@@ -738,7 +739,7 @@ public class AutoChess : MonoBehaviour
             titleStyle ??= new GUIStyle(GUI.skin.label);
             titleStyle.alignment = TextAnchor.MiddleCenter; titleStyle.fontStyle = FontStyle.Bold; titleStyle.fontSize = 18; titleStyle.wordWrap = false;
             titleStyle.normal.textColor = cleared ? new Color(1, .85f, .2f) : new Color(1, .4f, .4f);
-            GUI.Label(new Rect(r.x, r.y + 18, r.width, 40), cleared ? "[VICTORY - 톡톡이의 시험 클리어!]" : $"[GAME OVER - 최종 도달: Stage {StageManager.Label(finalRound)}]", titleStyle);
+            GUI.Label(new Rect(r.x, r.y + 18, r.width, 40), cleared ? $"[VICTORY - {GameTitle} 클리어!]" : $"[GAME OVER - 최종 도달: Stage {StageManager.Label(finalRound)}]", titleStyle);
             if (GUI.Button(new Rect(r.x + r.width / 2 - 70, r.y + 78, 140, 36), "[다시 하기]")) Reset();
             return;
         }
@@ -799,7 +800,7 @@ public class AutoChess : MonoBehaviour
         GUI.Box(r, "");
         titleStyle ??= new GUIStyle(GUI.skin.label);
         titleStyle.alignment = TextAnchor.MiddleCenter; titleStyle.fontStyle = FontStyle.Bold; titleStyle.fontSize = 18; titleStyle.wordWrap = false; titleStyle.normal.textColor = Color.white;
-        GUI.Label(new Rect(r.x, r.y + 8, r.width, 30), "도움말 — 톡톡이의 시험", titleStyle);
+        GUI.Label(new Rect(r.x, r.y + 8, r.width, 30), "도움말 — " + GameTitle, titleStyle);
         helpStyle ??= new GUIStyle(GUI.skin.label);
         helpStyle.wordWrap = true; helpStyle.richText = true; helpStyle.fontSize = 13; helpStyle.alignment = TextAnchor.UpperLeft; helpStyle.normal.textColor = Color.white;
         var view = new Rect(r.x + 16, r.y + 46, r.width - 32, r.height - 106);
