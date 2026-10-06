@@ -137,11 +137,22 @@ public class AutoChess : MonoBehaviour
     GUIStyle center, card, wrap, titleStyle, smallStyle, helpStyle;
     bool helpOpen; Vector2 helpScroll;
     const string HelpKey = "AutoChessHelpSeen"; // 처음 실행할 때만 도움말을 자동으로 띄우기 위한 기록
+    public const string Title = GameTitle;
     const string GameTitle = "정령과 거인의 전쟁"; // 가제. 최종 이름이 정해지면 이 한 줄만 바꾸면 도움말 제목·클리어 문구에 반영된다
+
+    public const string GameScene = "GameScene", MenuScene = "MainMenu";
+    public const string DiffKey = "AutoChessDiff"; // 메인 메뉴에서 고른 난이도(0~2)를 게임 씬으로 넘기는 기록
 
     [RuntimeInitializeOnLoadMethod]
     static void Boot()
     {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += (s, _) => Build(s.name); // 메인 메뉴에서 넘어올 때마다 생성
+        Build(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);           // 게임 씬에서 바로 시작한 경우
+    }
+
+    static void Build(string scene)
+    {
+        if (scene != GameScene || FindFirstObjectByType<AutoChess>() != null) return; // 메인 메뉴 씬에서는 게임을 만들지 않는다
         var go = new GameObject("AutoChess");
         go.AddComponent<AutoChessVisualManager>(); // 비주얼 에셋(3D 타일·유닛·배경, UI 스프라이트) 연결. 에셋이 없으면 기본 도형/UI
         go.AddComponent<AutoChess>();
@@ -164,9 +175,12 @@ public class AutoChess : MonoBehaviour
             Tile(x % 2 == 0 ? K + 4 : K + 5, x, BenchZ, new Color(.15f, .35f, .35f) * (1 + x % 2 * .3f)); // 대기석 1x8
         }
         AutoChessVisualManager.I.BuildStage(3.5f, (N - 1 + BenchZ) / 2, 10.5f, N, N / 2 - .5f); // 경계선·바닥 받침·배경(있을 때만)
+        diff = Mathf.Clamp(PlayerPrefs.GetInt(DiffKey, 1), 0, 2);
         Reset();
         if (PlayerPrefs.GetInt(HelpKey, 0) == 0) ToggleHelp(); // 처음 실행하면 도움말을 한 번 보여 준다
     }
+
+    void GoMenu() { Time.timeScale = 1f; UnityEngine.SceneManagement.SceneManager.LoadScene(MenuScene); }
 
     // 3D 타일 메쉬(Resources/Visuals/Map/Map_Tile_NN)가 있으면 그것을, 없으면 기본 큐브 타일을 놓는다
     static void Tile(AutoChessVisualManager.TileKind kind, float x, float z, Color col)
@@ -740,7 +754,8 @@ public class AutoChess : MonoBehaviour
             titleStyle.alignment = TextAnchor.MiddleCenter; titleStyle.fontStyle = FontStyle.Bold; titleStyle.fontSize = 18; titleStyle.wordWrap = false;
             titleStyle.normal.textColor = cleared ? new Color(1, .85f, .2f) : new Color(1, .4f, .4f);
             GUI.Label(new Rect(r.x, r.y + 18, r.width, 40), cleared ? $"[VICTORY - {GameTitle} 클리어!]" : $"[GAME OVER - 최종 도달: Stage {StageManager.Label(finalRound)}]", titleStyle);
-            if (GUI.Button(new Rect(r.x + r.width / 2 - 70, r.y + 78, 140, 36), "[다시 하기]")) Reset();
+            if (GUI.Button(new Rect(r.x + r.width / 2 - 150, r.y + 78, 140, 36), "[다시 하기]")) Reset();
+            if (GUI.Button(new Rect(r.x + r.width / 2 + 10, r.y + 78, 140, 36), "[메인 화면]")) GoMenu();
             return;
         }
         if (helpOpen) { DrawHelp(W, H); return; } // 도움말: 게임을 멈추고 다른 조작을 막는다
