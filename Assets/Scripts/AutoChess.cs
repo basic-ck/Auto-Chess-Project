@@ -191,17 +191,22 @@ public class AutoChess : MonoBehaviour
         foreach (var u in us) Destroy(u.go);
         us.Clear();
         gold = 10; life = 3; round = 1; over = false; cleared = false; level = 1; xp = 0; shopOpen = false; msg = "";
-        winStreak = 0; incomeLog = ""; helpOpen = false;
-        Time.timeScale = 1f; fts.Clear(); banner = ""; // 결과창에서 멈췄던 시간·연출 초기화
-        Prep();
+        winStreak = 0; incomeLog = ""; helpOpen = false; quitConfirm = false;
+        fts.Clear(); banner = ""; // 결과창에서 멈췄던 연출 초기화
+        Prep(); // (Prep 안에서 시간 흐름도 정상으로 되돌림)
     }
 
-    // 게임 종료(클리어/패배): 시간을 멈추고 결과 팝업을 띄운다. finalRound = 마지막으로 싸운 라운드.
+    // 게임 종료(클리어/패배/포기): 시간을 멈추고 결과 팝업을 띄운다. finalRound = 마지막으로 싸운(또는 포기한) 라운드.
     void EndGame(bool win)
     {
         cleared = win; over = true; battle = false; finalRound = round;
-        Time.timeScale = 0f;
+        ApplyTime();
     }
+
+    // 시간 흐름: 도움말·포기 확인·결과창이 떠 있으면 정지, 전투 중에는 배속, 그 외에는 1배
+    int speed = 1;          // 전투 배속 1·2·3
+    bool quitConfirm;       // "정말 포기할까요?" 확인창
+    void ApplyTime() => Time.timeScale = helpOpen || quitConfirm || over ? 0f : battle ? speed : 1f;
 
     // 유닛 생성: 데이터베이스의 도형·색·크기로 시각 자동 생성. star 성급(스탯 x1.8씩), statMul은 체력·공격력 배율(적 난이도 등).
     U Spawn(int team, int id, int x, int z, float statMul = 1, bool bench = false, int star = 1)
@@ -236,6 +241,7 @@ public class AutoChess : MonoBehaviour
     void Prep()
     {
         battle = false; sel = null; dragU = null; Roll();
+        ApplyTime(); // 준비 단계는 항상 1배속
         foreach (var p in ps) Destroy(p.go);
         ps.Clear();
         foreach (var z in zs) Destroy(z.go);
@@ -691,7 +697,11 @@ public class AutoChess : MonoBehaviour
     void OnGUI()
     {
         var ev = Event.current;
-        if (ev.type == EventType.KeyDown && !over && (ev.keyCode == KeyCode.H || (helpOpen && ev.keyCode == KeyCode.Escape))) { ToggleHelp(); ev.Use(); } // H=도움말 열기/닫기, ESC=닫기
+        if (ev.type == EventType.KeyDown && !over)
+        {
+            if (quitConfirm) { if (ev.keyCode == KeyCode.Escape) { quitConfirm = false; ApplyTime(); ev.Use(); } } // ESC=포기 취소
+            else if (ev.keyCode == KeyCode.H || (helpOpen && ev.keyCode == KeyCode.Escape)) { ToggleHelp(); ev.Use(); } // H=도움말 열기/닫기, ESC=닫기
+        }
         DrawUI();
         DrawFloatTexts(); // 패널 위에 덮어 그림
         DrawBanner();
@@ -733,6 +743,7 @@ public class AutoChess : MonoBehaviour
             return;
         }
         if (helpOpen) { DrawHelp(W, H); return; } // 도움말: 게임을 멈추고 다른 조작을 막는다
+        if (quitConfirm) { DrawQuitConfirm(W, H); return; } // 포기 확인창도 마찬가지
 
         // 하단 바
         ui.Add(new Rect(0, H - 52, W, 52));
@@ -749,17 +760,34 @@ public class AutoChess : MonoBehaviour
         if (GUI.Button(new Rect(W - 140, H - 44, 130, 36), shopOpen ? "상점 닫기" : "상점 열기")) shopOpen = !shopOpen;
         GUI.enabled = true;
         if (GUI.Button(new Rect(150, H - 44, 100, 36), "도움말 (H)")) ToggleHelp(); // 전투 중에도 열 수 있다(열면 게임이 멈춤)
+        if (GUI.Button(new Rect(W / 2 + 80, H - 44, 90, 36), $"배속 ×{speed}")) { speed = speed % 3 + 1; ApplyTime(); } // 1→2→3→1, 전투 중에만 적용
+        if (GUI.Button(new Rect(W - 215, 6, 100, 24), "포기")) { quitConfirm = true; ApplyTime(); } // 바로 끝내지 않고 확인창을 띄운다
 
         if (shopOpen && !battle) DrawShop(W); // 상점이 열려 있으면 옆 패널은 숨김(겹침 방지)
         else { DrawSynergy(); DrawInfo(W); }
         HandleMouse();
     }
 
+    // 포기 확인창: [포기하기]를 누르면 지금까지 도달한 스테이지와 함께 결과창(GAME OVER)이 뜬다
+    void DrawQuitConfirm(float W, float H)
+    {
+        ui.Add(new Rect(0, 0, W, H));
+        GUI.color = new Color(0, 0, 0, .55f); GUI.DrawTexture(new Rect(0, 0, W, H), Texture2D.whiteTexture); GUI.color = Color.white;
+        var r = new Rect(W / 2 - 170, H / 2 - 70, 340, 140);
+        GUI.Box(r, "");
+        titleStyle ??= new GUIStyle(GUI.skin.label);
+        titleStyle.alignment = TextAnchor.MiddleCenter; titleStyle.fontStyle = FontStyle.Bold; titleStyle.fontSize = 18; titleStyle.wordWrap = false; titleStyle.normal.textColor = Color.white;
+        GUI.Label(new Rect(r.x, r.y + 14, r.width, 30), "정말 포기하시겠습니까?", titleStyle);
+        GUI.Label(new Rect(r.x + 10, r.y + 48, r.width - 20, 30), $"지금까지 도달한 Stage {StageManager.Label(round)} 기록으로 끝납니다.", center);
+        if (GUI.Button(new Rect(r.x + 30, r.y + 90, 130, 36), "포기하기")) { quitConfirm = false; EndGame(false); }
+        if (GUI.Button(new Rect(r.x + 180, r.y + 90, 130, 36), "취소 (ESC)")) { quitConfirm = false; ApplyTime(); }
+    }
+
     // ---------------- 도움말 ----------------
     void ToggleHelp()
     {
         helpOpen = !helpOpen;
-        Time.timeScale = helpOpen || over ? 0f : 1f; // 열려 있는 동안 전투도 멈춘다
+        ApplyTime(); // 열려 있는 동안 전투도 멈춘다
         if (!helpOpen) { PlayerPrefs.SetInt(HelpKey, 1); PlayerPrefs.Save(); }
     }
 
@@ -808,9 +836,10 @@ public class AutoChess : MonoBehaviour
         "<b><color=#ffd966>전투</color></b>\n" +
         "• 유닛은 가까운 적을 자동으로 공격하고, 마나(체력바 밑의 파란 막대)가 가득 차면 스킬을 씁니다. 스킬 설명은 상점 카드와 유닛 정보창에 있습니다.\n" +
         "• 한쪽이 전멸하면 끝납니다. 100초가 넘으면 남은 체력 합이 많은 쪽이 이깁니다.\n" +
+        "• 아래 [배속 ×1 / ×2 / ×3] 버튼으로 전투 속도를 바꿀 수 있습니다(준비 단계는 항상 1배). 위쪽 [포기]를 누르면 확인 후 게임을 끝냅니다.\n" +
         "• 난이도(오른쪽 위)는 준비 단계에서 바꿀 수 있고, 적의 체력·공격력이 쉬움 ×0.85 · 보통 ×1.0 · 어려움 ×1.25가 됩니다.\n\n" +
         "<b><color=#ffd966>조작 요약</color></b>\n" +
-        "클릭 = 선택·정보  /  끌어서 놓기 = 이동·교환  /  H = 도움말 열기·닫기  /  ESC = 도움말 닫기";
+        "클릭 = 선택·정보  /  끌어서 놓기 = 이동·교환  /  H = 도움말 열기·닫기  /  ESC = 도움말·포기 확인창 닫기";
 
     static string Tag(int tag) => tag < RaceN ? RaceName[tag] : JobName[tag - RaceN];
     static string TagsOf(UD d) => d.race < 0 ? "-" : RaceName[d.race] + " / " + JobName[d.job];
@@ -1026,6 +1055,7 @@ public class AutoChess : MonoBehaviour
         }
         foreach (var u in new List<U>(us)) if ((u.d.fx & Fx.Infiltrate) != 0 && u.Active) Teleport(u);
         tickNo = 0; msg = ""; incomeLog = ""; battle = true; shopOpen = false;
+        ApplyTime(); // 선택한 배속 적용
         ShowBanner($"[STAGE {StageManager.Label(round)}]", Boss ? new Color(1, .5f, .2f) : Color.white, 1.5f);
     }
 

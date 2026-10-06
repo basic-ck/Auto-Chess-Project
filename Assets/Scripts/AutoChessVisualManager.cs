@@ -6,7 +6,9 @@ using UnityEngine;
 // 연결 우선순위: AutoChessVisualSet 에셋(메뉴로 자동 매칭) → 없으면 Resources/Visuals/ 아래 파일 이름 규칙으로 직접 검색.
 public class AutoChessVisualManager : MonoBehaviour
 {
-    public static AutoChessVisualManager I { get; private set; }
+    // 정적 참조가 스크립트 재컴파일(도메인 리로드) 등으로 끊겨도 씬에서 다시 찾아 복구한다
+    static AutoChessVisualManager inst;
+    public static AutoChessVisualManager I => inst != null ? inst : inst = FindFirstObjectByType<AutoChessVisualManager>();
 
     // 맵 타일(Map_Tile_01~08)의 역할
     public enum TileKind { PlayerLight, PlayerDark, EnemyLight, EnemyDark, BenchA, BenchB, Divider, Base }
@@ -18,7 +20,7 @@ public class AutoChessVisualManager : MonoBehaviour
 
     void Awake()
     {
-        I = this;
+        inst = this;
         set = Resources.Load<AutoChessVisualSet>(AutoChessVisualSet.ResourcePath);
         stage = new GameObject("VisualStage").transform;
     }
