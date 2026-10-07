@@ -14,6 +14,15 @@
    유닛 하나당 약 8초. 일부만: `--only Unit_01,Unit_05`
 3. Unity 로 돌아가 메뉴 `AutoChess > 유닛 색상 텍스처 추출·적용` 실행 → 재질 연결 완료.
 
+## 타일(Map_Tile_NN)도 같은 방식
+원본은 `RawModels/Map/` 에 두고 폴더와 옵션만 바꿔 실행한다(타일은 평평한 판이라 면 수를 줄이고 매끈하게는 약하게).
+
+```
+"C:\Program Files\Blender Foundation\Blender 5.2lender.exe" -b --python Tools/clean_units.py -- --src RawModels/Map --out Assets/Resources/Visuals/Map --tex Assets/Resources/Visuals/MapTextures --faces 3000 --smooth 0.2
+```
+
+이후 Unity 메뉴 실행은 동일(유닛·타일을 한꺼번에 처리).
+
 ## 옵션 (결과가 마음에 안 들 때)
 | 옵션 | 기본 | 설명 |
 |---|---|---|

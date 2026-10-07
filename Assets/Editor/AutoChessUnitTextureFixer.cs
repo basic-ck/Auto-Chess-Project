@@ -3,28 +3,34 @@ using UnityEditor;
 using UnityEngine;
 
 // 바르코 3D FBX는 색(base_color.png 4096x4096)이 파일 안에 들어 있기만 하고 Unity가 재질에 연결해 주지 않아 회색으로 보인다.
-// 메뉴 AutoChess > 유닛 색상 텍스처 추출·적용: Resources/Visuals/Units/Unit_NN.fbx 마다
+// 메뉴 AutoChess > 유닛 색상 텍스처 추출·적용: Resources/Visuals/Units(유닛)·Map(타일)의 FBX 마다
 //  1) 내장 텍스처 추출  2) base_color 를 1024px JPG 로 축소 저장(UnitTextures/Unit_NN_color.jpg), 노멀맵은 버림
 //  3) URP Lit 재질(UnitTextures/Unit_NN_Mat.mat) 생성  4) FBX 의 material_0 을 그 재질로 교체
 public static class AutoChessUnitTextureFixer
 {
-    const string UnitDir = "Assets/Resources/Visuals/Units", TexDir = "Assets/Resources/Visuals/UnitTextures";
+    // {FBX 폴더, 텍스처·재질 폴더}: 유닛과 타일 모두 같은 방식으로 처리
+    static readonly string[][] Targets =
+    {
+        new[] { "Assets/Resources/Visuals/Units", "Assets/Resources/Visuals/UnitTextures" },
+        new[] { "Assets/Resources/Visuals/Map", "Assets/Resources/Visuals/MapTextures" },
+    };
     const int Size = 1024;
 
     [MenuItem("AutoChess/유닛 색상 텍스처 추출·적용")]
     static void Run()
     {
         int ok = 0, skip = 0;
-        foreach (var guid in AssetDatabase.FindAssets("t:Model", new[] { UnitDir }))
-        {
-            var path = AssetDatabase.GUIDToAssetPath(guid);
-            if (Fix(path)) ok++; else skip++;
-        }
+        foreach (var t in Targets)
+            foreach (var guid in AssetDatabase.FindAssets("t:Model", new[] { t[0] }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (Fix(path, t[1])) ok++; else skip++;
+            }
         AssetDatabase.Refresh();
         Debug.Log($"[유닛 색상] 적용 {ok}개, 건너뜀 {skip}개");
     }
 
-    public static bool Fix(string fbxPath)
+    public static bool Fix(string fbxPath, string TexDir)
     {
         string name = Path.GetFileNameWithoutExtension(fbxPath);
         var imp = AssetImporter.GetAtPath(fbxPath) as ModelImporter;
