@@ -27,5 +27,11 @@
 
 # 바르코 3D에서 받은 큰 3D 파일 (파일 하나가 50MB 이상이라 기록이 너무 커짐)
 # 용량을 줄인 뒤 백업에 포함하려면 아래 두 줄을 지우세요. (.meta 파일은 그대로 백업됩니다)
-/Assets/Resources/Visuals/**/*.fbx
 /Assets/Resources/Visuals/**/*.fbx.meta.bak
+
+# 바르코 원본 모델(큰 파일) 보관 폴더
+/RawModels/
+
+# 아직 정리 전인 큰 원본 FBX(타일·배경)는 제외. 유닛은 Tools/clean_units.py 로 정리돼 가벼우므로 포함
+/Assets/Resources/Visuals/Map/**/*.fbx
+/Assets/Resources/Visuals/Environment/**/*.fbx

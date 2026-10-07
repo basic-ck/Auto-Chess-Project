@@ -31,20 +31,22 @@ public static class AutoChessUnitTextureFixer
         if (imp == null) return false;
         Directory.CreateDirectory(TexDir);
 
-        string tmp = $"{TexDir}/_tmp_{name}";
-        Directory.CreateDirectory(tmp);
-        imp.ExtractTextures(tmp);
-        AssetDatabase.Refresh();
-        string src = $"{tmp}/base_color.png";
-        var big = AssetDatabase.LoadAssetAtPath<Texture2D>(src);
-        if (big == null) { AssetDatabase.DeleteAsset(tmp); Debug.LogWarning($"{name}: base_color 텍스처를 찾지 못함"); return false; }
-
-        // 4096 → 1024 축소(GPU 블릿) 후 JPG 저장
-        var tex = ReadableCopy(big, Size);
         string jpg = $"{TexDir}/{name}_color.jpg";
-        File.WriteAllBytes(jpg, tex.EncodeToJPG(90));
-        Object.DestroyImmediate(tex);
-        AssetDatabase.DeleteAsset(tmp); // 추출 원본(PNG 약 15MB)·노멀맵 삭제
+        if (!File.Exists(jpg)) // Blender 정리 스크립트(Tools/clean_units.py)가 이미 JPG 를 만들어 뒀으면 추출을 건너뛴다
+        {
+            string tmp = $"{TexDir}/_tmp_{name}";
+            Directory.CreateDirectory(tmp);
+            imp.ExtractTextures(tmp);
+            AssetDatabase.Refresh();
+            var big = AssetDatabase.LoadAssetAtPath<Texture2D>($"{tmp}/base_color.png");
+            if (big == null) { AssetDatabase.DeleteAsset(tmp); Debug.LogWarning($"{name}: base_color 텍스처를 찾지 못함"); return false; }
+
+            // 4096 → 1024 축소(GPU 블릿) 후 JPG 저장
+            var tex = ReadableCopy(big, Size);
+            File.WriteAllBytes(jpg, tex.EncodeToJPG(90));
+            Object.DestroyImmediate(tex);
+            AssetDatabase.DeleteAsset(tmp); // 추출 원본(PNG 약 15MB)·노멀맵 삭제
+        }
         AssetDatabase.ImportAsset(jpg);
         var ti = (TextureImporter)AssetImporter.GetAtPath(jpg);
         ti.maxTextureSize = Size; ti.mipmapEnabled = true; ti.sRGBTexture = true;
