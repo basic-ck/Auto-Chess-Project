@@ -21,7 +21,9 @@ def parse():
     p.add_argument("--texsize", type=int, default=1024)
     p.add_argument("--minpart", type=float, default=0.02, help="전체 면의 이 비율보다 작은 떨어진 조각은 삭제 (기본 0.02)")
     p.add_argument("--only", default="", help="쉼표로 구분한 파일 이름(확장자 제외)만 처리. 예: Unit_01,Unit_05")
-    return p.parse_args(argv)
+    a = p.parse_args(argv)
+    a.src, a.out, a.tex = (os.path.abspath(x) for x in (a.src, a.out, a.tex))  # 상대 경로면 Blender 가 이미지를 엉뚱한 곳에 저장해서 절대 경로로 바꾼다
+    return a
 
 
 def reset():
@@ -105,6 +107,7 @@ def process(path, a):
         jpg = os.path.join(a.tex, f"{name}_color.jpg")
         img.filepath_raw = jpg; img.file_format = "JPEG"
         img.save(quality=90)
+        if not os.path.exists(jpg): raise RuntimeError(f"텍스처 저장 실패: {jpg}")
         tex_note = f"{a.texsize}px JPG"
 
     # 재질은 이름만 material_0 으로 남기고 텍스처 노드는 비운다(Unity 가 JPG 로 재질을 새로 만듦)
