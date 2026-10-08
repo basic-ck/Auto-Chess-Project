@@ -90,7 +90,7 @@ public class AutoChessVisualManager : MonoBehaviour
     // 가로세로를 footprint에 맞추고 윗면이 y=0에 오도록 배치한다.
     public GameObject Tile(TileKind kind, float x, float z, float footprint = .95f, float y = 0)
     {
-        var prefab = TilePrefab((int)kind);
+        var prefab = TilePrefab((int)kind) ?? (kind == TileKind.BenchB ? TilePrefab((int)TileKind.BenchA) : null); // 대기석 B(06)가 없으면 A(05)를 그대로 쓴다
         if (prefab == null) return null;
         var root = new GameObject("Tile_" + kind);
         root.transform.SetParent(stage, false);
