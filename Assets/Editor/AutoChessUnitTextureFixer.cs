@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 
 // 바르코 3D FBX는 색(base_color.png 4096x4096)이 파일 안에 들어 있기만 하고 Unity가 재질에 연결해 주지 않아 회색으로 보인다.
-// 메뉴 AutoChess > 유닛 색상 텍스처 추출·적용: Resources/Visuals/Units(유닛)·Map(타일)의 FBX 마다
+// 메뉴 AutoChess > 유닛 색상 텍스처 추출·적용: Resources/Visuals/Units(유닛)·Map(타일)·Themes(배경 소품)의 FBX 마다
 //  1) 내장 텍스처 추출  2) base_color 를 1024px JPG 로 축소 저장(UnitTextures/Unit_NN_color.jpg), 노멀맵은 버림
 //  3) URP Lit 재질(UnitTextures/Unit_NN_Mat.mat) 생성  4) FBX 의 material_0 을 그 재질로 교체
 public static class AutoChessUnitTextureFixer
@@ -13,6 +13,7 @@ public static class AutoChessUnitTextureFixer
     {
         new[] { "Assets/Resources/Visuals/Units", "Assets/Resources/Visuals/UnitTextures" },
         new[] { "Assets/Resources/Visuals/Map", "Assets/Resources/Visuals/MapTextures" },
+        new[] { "Assets/Resources/Visuals/Themes", "Assets/Resources/Visuals/ThemeTextures" }, // 배경 테마 소품(하위 폴더 포함)
     };
     const int Size = 1024;
 

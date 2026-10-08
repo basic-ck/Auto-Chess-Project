@@ -154,6 +154,7 @@ public class AutoChess : MonoBehaviour
     {
         if (scene != GameScene || FindFirstObjectByType<AutoChess>() != null) return; // 메인 메뉴 씬에서는 게임을 만들지 않는다
         var go = new GameObject("AutoChess");
+        go.AddComponent<AutoChessThemes>(); // 맵 주변 배경 테마(T 키로 전환)
         go.AddComponent<AutoChessVisualManager>(); // 비주얼 에셋(3D 타일·유닛·배경, UI 스프라이트) 연결. 에셋이 없으면 기본 도형/UI
         go.AddComponent<AutoChess>();
     }
@@ -715,6 +716,7 @@ public class AutoChess : MonoBehaviour
         if (ev.type == EventType.KeyDown && !over)
         {
             if (quitConfirm) { if (ev.keyCode == KeyCode.Escape) { quitConfirm = false; ApplyTime(); ev.Use(); } } // ESC=포기 취소
+            else if (ev.keyCode == KeyCode.T && AutoChessThemes.I != null) { AutoChessThemes.I.Cycle(); ev.Use(); } // T=배경 테마 바꾸기
             else if (ev.keyCode == KeyCode.H || (helpOpen && ev.keyCode == KeyCode.Escape)) { ToggleHelp(); ev.Use(); } // H=도움말 열기/닫기, ESC=닫기
         }
         DrawUI();
@@ -777,6 +779,7 @@ public class AutoChess : MonoBehaviour
         GUI.enabled = true;
         if (GUI.Button(new Rect(150, H - 44, 100, 36), "도움말 (H)")) ToggleHelp(); // 전투 중에도 열 수 있다(열면 게임이 멈춤)
         if (GUI.Button(new Rect(W / 2 + 80, H - 44, 90, 36), $"배속 ×{speed}")) { speed = speed % 3 + 1; ApplyTime(); } // 1→2→3→1, 전투 중에만 적용
+        if (AutoChessThemes.I != null && GUI.Button(new Rect(W - 355, 6, 130, 24), $"배경 (T): {AutoChessThemes.I.Index + 1}/{AutoChessThemes.Count}")) AutoChessThemes.I.Cycle();
         if (GUI.Button(new Rect(W - 215, 6, 100, 24), "포기")) { quitConfirm = true; ApplyTime(); } // 바로 끝내지 않고 확인창을 띄운다
 
         if (shopOpen && !battle) DrawShop(W); // 상점이 열려 있으면 옆 패널은 숨김(겹침 방지)
