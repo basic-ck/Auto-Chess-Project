@@ -111,7 +111,7 @@ public class AutoChess : MonoBehaviour
     // bench=true 이면 대기석 유닛(x=칸 번호, z=-1). 전투에 참여하지 않는다.
     class U
     {
-        public bool boss, temp, bench, prefab; public Vector3 kick; public float flash, acc;
+        public bool boss, temp, bench, prefab; public Vector3 look; public Vector3 kick; public float flash, acc;
         public float y0 = .5f, top; public Vector3 baseSz; // y0=바닥에서 오브젝트 원점 높이(3D 유닛은 발 밑이 원점이라 0), top=머리 위 표식 기준 높이(3D 유닛), baseSz=기본 크기
         public int star = 1, team, id, hp, max, atk, range, x, z, sx, sz, shield, mana, stun, slow, silence, poison, pdmg, invuln, buff; public GameObject go;
         public UD d => UnitDataDatabase[id];
@@ -243,10 +243,16 @@ public class AutoChess : MonoBehaviour
         var u = new U { team = team, id = id, star = star, hp = (int)(d.hp * m), atk = (int)(d.atk * m), range = d.range, x = x, z = z, sx = x, sz = z, go = go, bench = bench,
             prefab = pf, y0 = pf ? 0 : .5f, top = top, baseSz = pf ? Vector3.one : d.sz };
         u.max = u.hp;
+        u.look = Home(team); u.go.transform.rotation = Rot(u.look);
         Place(u);
         us.Add(u);
         return u;
     }
+
+    // 방향: 모델은 기본으로 -Z(카메라 쪽)를 바라본다. 아군은 적 진영(+Z), 적은 아군 진영(-Z)을 마주 보고, 전투 중에는 공격·이동하는 쪽을 본다.
+    static Vector3 Home(int team) => team == 0 ? Vector3.forward : Vector3.back;
+    static Quaternion Rot(Vector3 look) => Quaternion.LookRotation(-look);
+    static void Face(U u, int tx, int tz) { var d = new Vector3(tx - u.x, 0, tz - u.z); if (d.sqrMagnitude > 0) u.look = d.normalized; }
 
     static Vector3 Pos(U u) => new Vector3(u.x, u.y0, u.bench ? BenchZ : u.z);
     static void Place(U u) => u.go.transform.position = Pos(u);
@@ -270,6 +276,7 @@ public class AutoChess : MonoBehaviour
         {
             u.hp = u.max; u.shield = u.mana = u.stun = u.slow = u.silence = u.poison = u.invuln = u.buff = 0; u.acc = 0;
             if (!u.bench) { u.x = u.sx; u.z = u.sz; }
+            u.look = Home(u.team); u.go.transform.rotation = Rot(u.look);
             u.go.SetActive(true); Place(u);
         }
         SpawnEnemies();
@@ -391,6 +398,7 @@ public class AutoChess : MonoBehaviour
             u.kick = Vector3.MoveTowards(u.kick, Vector3.zero, 3 * Time.deltaTime);
             u.flash = Mathf.Max(0, u.flash - Time.deltaTime);
             u.go.transform.position = Vector3.MoveTowards(u.go.transform.position, Pos(u) + u.kick, 12 * Time.deltaTime);
+            u.go.transform.rotation = Quaternion.RotateTowards(u.go.transform.rotation, Rot(u.look), 720 * Time.deltaTime);
             u.go.transform.localScale = u.baseSz * (1 + .2f * (u.star - 1)) * (u.boss ? 1.8f : 1) * (1 + u.flash * 2);
         }
         foreach (var pr in ps) // 투사체 비행(연출): 피해는 LandProjectiles에서 틱 단위로 처리. 타겟이 판매돼 사라졌으면 제자리
@@ -509,6 +517,7 @@ public class AutoChess : MonoBehaviour
     // 기본 공격: 근접은 즉시 타격, 사거리 2 이상 원거리는 투사체가 도착(다음 틱)했을 때 타격
     void Strike(U u, U tgt)
     {
+        Face(u, tgt.x, tgt.z);
         int dmg = BaseDmg(u);
         bool crit = (u.d.fx & Fx.Crit) != 0 && Random.value < .3f;
         if (crit) dmg *= 2;
@@ -583,6 +592,7 @@ public class AutoChess : MonoBehaviour
                 if (nx < 0 || nz < 0 || nx >= N || nz >= N || At(nx, nz) != null) continue;
                 if (Dist(nx, nz, tx, tz) < Dist(bx, bz, tx, tz)) { bx = nx; bz = nz; }
             }
+        if (bx != u.x || bz != u.z) Face(u, bx, bz); // 가는 쪽을 본다
         u.x = bx; u.z = bz;
     }
 
@@ -591,6 +601,7 @@ public class AutoChess : MonoBehaviour
     {
         var tgt = Pick(u);
         if (tgt == null && u.d.sk != Sk.Heal && u.d.sk != Sk.HealAll && u.d.sk != Sk.Ward && u.d.sk != Sk.Invuln) return false;
+        if (tgt != null) Face(u, tgt.x, tgt.z);
         var foes = Foes(u);
         int dmgBase = BaseDmg(u);
         switch (u.d.sk)
