@@ -249,9 +249,9 @@ public class AutoChess : MonoBehaviour
         return u;
     }
 
-    // 방향: 모델은 기본으로 -Z(카메라 쪽)를 바라본다. 아군은 적 진영(+Z), 적은 아군 진영(-Z)을 마주 보고, 전투 중에는 공격·이동하는 쪽을 본다.
+    // 방향: 모델은 기본으로 +Z(적 진영 쪽)를 바라본다. 아군은 적 진영(+Z), 적은 아군 진영(-Z)을 마주 보고, 전투 중에는 공격·이동하는 쪽을 본다.
     static Vector3 Home(int team) => team == 0 ? Vector3.forward : Vector3.back;
-    static Quaternion Rot(Vector3 look) => Quaternion.LookRotation(-look);
+    static Quaternion Rot(Vector3 look) => Quaternion.LookRotation(look);
     static void Face(U u, int tx, int tz) { var d = new Vector3(tx - u.x, 0, tz - u.z); if (d.sqrMagnitude > 0) u.look = d.normalized; }
 
     static Vector3 Pos(U u) => new Vector3(u.x, u.y0, u.bench ? BenchZ : u.z);
