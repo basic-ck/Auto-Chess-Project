@@ -66,24 +66,30 @@ public class MainMenu : MonoBehaviour
         boxSel = Box(new Color(.6f, .45f, .12f, .95f), new Color(1f, .88f, .5f, 1));
     }
 
+    // 마우스를 올리면 GUIStyle 이 hover 상태의 글자색(기본값)으로 바뀌어, 겹쳐 그린 그림자 글자와 색이 어긋나 겹쳐 보인다 → 모든 상태를 같은 색으로 고정
+    static void SetColor(GUIStyle st, Color c)
+    {
+        st.normal.textColor = st.hover.textColor = st.active.textColor = st.focused.textColor = c;
+        st.onNormal.textColor = st.onHover.textColor = st.onActive.textColor = st.onFocused.textColor = c;
+    }
+
     static GUIStyle Style(GUIStyle src, int size, Color col, FontStyle fs, TextAnchor a)
     {
         var s = src ?? new GUIStyle(GUI.skin.label);
-        s.fontSize = size; s.fontStyle = fs; s.alignment = a; s.normal.textColor = col; s.wordWrap = false;
+        s.fontSize = size; s.fontStyle = fs; s.alignment = a; s.wordWrap = false;
+        SetColor(s, col);
         return s;
     }
 
     // 글자에 그림자(4방향 어두운 복사) + 본 글자
     static void Shadowed(Rect r, string text, GUIStyle st, Color main)
     {
-        var c = st.normal.textColor;
-        st.normal.textColor = new Color(0, 0, 0, .75f);
+        SetColor(st, new Color(0, 0, 0, .75f));
         float o = Mathf.Max(2, st.fontSize * .06f);
         GUI.Label(new Rect(r.x + o, r.y + o * 1.4f, r.width, r.height), text, st);
         GUI.Label(new Rect(r.x - o * .5f, r.y + o, r.width, r.height), text, st);
-        st.normal.textColor = main;
+        SetColor(st, main);
         GUI.Label(r, text, st);
-        st.normal.textColor = c;
     }
 
     void OnGUI()
