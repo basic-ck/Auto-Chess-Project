@@ -12,6 +12,9 @@ public class MainMenu : MonoBehaviour
     static readonly Color Gold = new Color(1f, .84f, .38f), Cream = new Color(1f, .95f, .8f);
     int diff = 1;
     float startTime; // Play 시작 시각(까만 화면에서 서서히 밝아지는 연출 계산용)
+    bool loading;
+    // 프레임 저장 중에는 실시간이 아니라 프레임당 고정 시간(unscaledTime)으로 움직여야 영상이 일정하다
+    static float Now => Application.isPlaying ? (AutoChessCapture.Active ? AutoChessCapture.T : Time.unscaledTime) : Time.realtimeSinceStartup;
 
     // 에디터가 컴포넌트의 비공개 값까지 스크립트 재컴파일 뒤에도 보존해서, 예전 텍스처가 남지 않게 저장 대상에서 뺀다
     [System.NonSerialized] Texture2D bg, logo, sky, edge, dot, boxN, boxH, boxA, boxSel;
@@ -20,8 +23,14 @@ public class MainMenu : MonoBehaviour
     void Start()
     {
         if (!Application.isPlaying) return;
-        Time.timeScale = 1f; startTime = Time.realtimeSinceStartup;
+        Time.timeScale = 1f; startTime = Now;
         diff = Mathf.Clamp(PlayerPrefs.GetInt(AutoChess.DiffKey, 1), 0, 2);
+    }
+
+    void Update()
+    {
+        // 자동 시연(-demo): 메뉴를 잠깐 보여 준 뒤 게임 씬으로 넘어간다
+        if (Application.isPlaying && !loading && AutoChess.DemoFlag && Now - startTime > 5.5f) { loading = true; SceneManager.LoadScene(AutoChess.GameScene); }
     }
 
     // ---------- 그래픽(코드로 생성) ----------
@@ -97,7 +106,7 @@ public class MainMenu : MonoBehaviour
         Build();
         float W = Screen.width, H = Screen.height;
         float s = Mathf.Clamp(H / 800f, .75f, 2.2f); // 화면 크기에 맞춘 배율(기준 높이 800)
-        float t = Time.realtimeSinceStartup;
+        float t = Now;
         if (Event.current.type == EventType.Repaint) DrawBackground(W, H, t);
 
         // 제목: 로고 이미지가 있으면 로고, 없으면 글자
@@ -153,7 +162,7 @@ public class MainMenu : MonoBehaviour
         small = Style(small, Mathf.RoundToInt(12 * s), new Color(1, 1, 1, .55f), FontStyle.Normal, TextAnchor.LowerRight);
         GUI.Label(new Rect(W - 220 * s - 12, H - 28 * s, 220 * s, 22 * s), "v" + Application.version, small);
 
-        float fade = Application.isPlaying ? Mathf.Clamp01(1 - (Time.realtimeSinceStartup - startTime) / .9f) : 0; // 편집 모드에서는 연출 없음
+        float fade = Application.isPlaying ? Mathf.Clamp01(1 - (Now - startTime) / .9f) : 0; // 편집 모드에서는 연출 없음
         if (fade > 0 && Event.current.type == EventType.Repaint)
         {
             GUI.color = new Color(0, 0, 0, fade); GUI.DrawTexture(new Rect(0, 0, W, H), Texture2D.whiteTexture); GUI.color = Color.white;

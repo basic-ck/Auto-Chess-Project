@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // 8x8 오토체스 + 대기석(1x8). 씬 설정 없이 플레이하면 자동 생성됨.
-public class AutoChess : MonoBehaviour
+public partial class AutoChess : MonoBehaviour
 {
     // ================= 유닛 데이터베이스 (40종 + 소환 유령) =================
     enum Race { Human, Beast, Undead, Spirit, Golem, Machine, Goblin, Orc, Elf, Dragon, Dwarf, Naga, Demon, God }
@@ -146,6 +146,7 @@ public class AutoChess : MonoBehaviour
     [RuntimeInitializeOnLoadMethod]
     static void Boot()
     {
+        AutoChessCapture.Init(); // -capture <폴더> 로 실행하면 프레임을 저장(트레일러 제작용)
         UnityEngine.SceneManagement.SceneManager.sceneLoaded += (s, _) => Build(s.name); // 메인 메뉴에서 넘어올 때마다 생성
         Build(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);           // 게임 씬에서 바로 시작한 경우
     }
@@ -179,6 +180,7 @@ public class AutoChess : MonoBehaviour
         diff = Mathf.Clamp(PlayerPrefs.GetInt(DiffKey, 1), 0, 2);
         Reset();
         if (PlayerPrefs.GetInt(HelpKey, 0) == 0) ToggleHelp(); // 처음 실행하면 도움말을 한 번 보여 준다
+        DemoBegin(); // -demo 로 실행하면 자동 시연(AutoChessDemo.cs)
     }
 
     void GoMenu() { Time.timeScale = 1f; UnityEngine.SceneManagement.SceneManager.LoadScene(MenuScene); }
@@ -733,6 +735,7 @@ public class AutoChess : MonoBehaviour
         DrawUI();
         DrawFloatTexts(); // 패널 위에 덮어 그림
         DrawBanner();
+        DemoGUI();
     }
 
     void DrawUI()
@@ -742,6 +745,7 @@ public class AutoChess : MonoBehaviour
         card ??= new GUIStyle(GUI.skin.button) { wordWrap = true, fontSize = 11 };
         wrap ??= new GUIStyle(GUI.skin.label) { wordWrap = true };
         ui.Clear();
+        if (hideHud) { DrawUnitLabels(); return; } // 시연 모드: 영상용으로 HUD 를 숨기고 유닛 체력바만 표시
 
         ui.Add(new Rect(0, 0, W, 34));
         GUI.Label(new Rect(10, 4, W - 130, 20), $"[라운드 {StageManager.Label(round)} | 골드 {gold} | 목숨 {life} | 레벨 {level} ({(level < MaxLv ? $"{xp}/{Need[level - 1]}" : "MAX")})]");
@@ -1135,7 +1139,7 @@ public class AutoChess : MonoBehaviour
     }
 
     // 상단 중앙의 작고 심플한 알림 (스테이지 시작·승리·패배 공통)
-    void ShowBanner(string text, Color col, float life) { banner = text; bannerCol = col; bannerT0 = Time.unscaledTime; bannerLife = life; }
+    void ShowBanner(string text, Color col, float life) { banner = text; bannerCol = col; bannerT0 = NowT; bannerLife = life; }
 
     void DrawFloatTexts()
     {
@@ -1160,7 +1164,7 @@ public class AutoChess : MonoBehaviour
     void DrawBanner()
     {
         if (Event.current.type != EventType.Repaint || banner == "") return;
-        float t = Time.unscaledTime - bannerT0;
+        float t = NowT - bannerT0;
         if (t >= bannerLife) { banner = ""; return; }
         float a = t < .15f ? t / .15f : t > bannerLife * .6f ? 1 - (t - bannerLife * .6f) / (bannerLife * .4f) : 1;
         bannerStyle ??= new GUIStyle(GUI.skin.label);

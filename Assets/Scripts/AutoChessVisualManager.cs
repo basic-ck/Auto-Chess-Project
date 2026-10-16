@@ -33,6 +33,7 @@ public class AutoChessVisualManager : MonoBehaviour
     }
 
     GameObject UnitPrefab(int id) => set != null && id < set.units.Length && set.units[id] != null ? set.units[id] : LoadGO($"Visuals/Units/Unit_{id + 1:00}");
+    public bool HasUnit(int id) => UnitPrefab(id) != null; // 3D 모델이 있는 유닛인지(시연 모드가 모델 있는 유닛을 우선 사용)
     GameObject TilePrefab(int kind) => set != null && kind < set.mapTiles.Length && set.mapTiles[kind] != null ? set.mapTiles[kind] : LoadGO($"Visuals/Map/Map_Tile_{kind + 1:00}");
 
     public Sprite Icon(string key)

@@ -34,3 +34,8 @@
 
 # 아직 정리 전인 큰 원본 FBX(배경)는 제외. 유닛·타일은 Tools/clean_units.py 로 정리돼 가벼우므로 포함
 /Assets/Resources/Visuals/Environment/**/*.fbx
+
+# 빌드 결과물·트레일러 프레임
+/Builds/
+/TrailerFrames/
+/Trailer/
