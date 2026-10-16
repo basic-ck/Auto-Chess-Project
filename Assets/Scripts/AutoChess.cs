@@ -245,7 +245,7 @@ public partial class AutoChess : MonoBehaviour
         var u = new U { team = team, id = id, star = star, hp = (int)(d.hp * m), atk = (int)(d.atk * m), range = d.range, x = x, z = z, sx = x, sz = z, go = go, bench = bench,
             prefab = pf, y0 = pf ? 0 : .5f, top = top, baseSz = pf ? Vector3.one : d.sz };
         u.max = u.hp;
-        u.look = Home(team); u.go.transform.rotation = Rot(u.look);
+        u.look = Home(team); u.go.transform.rotation = Rot(u.look, u.id);
         Place(u);
         us.Add(u);
         return u;
@@ -253,7 +253,9 @@ public partial class AutoChess : MonoBehaviour
 
     // 방향: 모델은 기본으로 +Z(적 진영 쪽)를 바라본다. 아군은 적 진영(+Z), 적은 아군 진영(-Z)을 마주 보고, 전투 중에는 공격·이동하는 쪽을 본다.
     static Vector3 Home(int team) => team == 0 ? Vector3.forward : Vector3.back;
-    static Quaternion Rot(Vector3 look) => Quaternion.LookRotation(look);
+    // 모델 자체의 앞이 +Z 가 아닌 유닛은 여기서 보정(도). 비행함대 폭격기(Unit_39)는 코가 +X 쪽이라 -90°
+    static float YawFix(int id) => id == (int)UnitId.AirFleetBomber ? -90f : 0f;
+    static Quaternion Rot(Vector3 look, int id) => Quaternion.LookRotation(look) * Quaternion.Euler(0, YawFix(id), 0);
     static void Face(U u, int tx, int tz) { var d = new Vector3(tx - u.x, 0, tz - u.z); if (d.sqrMagnitude > 0) u.look = d.normalized; }
 
     static Vector3 Pos(U u) => new Vector3(u.x, u.y0, u.bench ? BenchZ : u.z);
@@ -278,7 +280,7 @@ public partial class AutoChess : MonoBehaviour
         {
             u.hp = u.max; u.shield = u.mana = u.stun = u.slow = u.silence = u.poison = u.invuln = u.buff = 0; u.acc = 0;
             if (!u.bench) { u.x = u.sx; u.z = u.sz; }
-            u.look = Home(u.team); u.go.transform.rotation = Rot(u.look);
+            u.look = Home(u.team); u.go.transform.rotation = Rot(u.look, u.id);
             u.go.SetActive(true); Place(u);
         }
         SpawnEnemies();
@@ -400,7 +402,7 @@ public partial class AutoChess : MonoBehaviour
             u.kick = Vector3.MoveTowards(u.kick, Vector3.zero, 3 * Time.deltaTime);
             u.flash = Mathf.Max(0, u.flash - Time.deltaTime);
             u.go.transform.position = Vector3.MoveTowards(u.go.transform.position, Pos(u) + u.kick, 12 * Time.deltaTime);
-            u.go.transform.rotation = Quaternion.RotateTowards(u.go.transform.rotation, Rot(u.look), 720 * Time.deltaTime);
+            u.go.transform.rotation = Quaternion.RotateTowards(u.go.transform.rotation, Rot(u.look, u.id), 720 * Time.deltaTime);
             u.go.transform.localScale = u.baseSz * (1 + .2f * (u.star - 1)) * (u.boss ? 1.8f : 1) * (1 + u.flash * 2);
         }
         foreach (var pr in ps) // 투사체 비행(연출): 피해는 LandProjectiles에서 틱 단위로 처리. 타겟이 판매돼 사라졌으면 제자리
@@ -469,7 +471,7 @@ public partial class AutoChess : MonoBehaviour
         if (timedOut) { msg = "시간 초과: " + msg; timedOut = false; }
         if (life <= 0) { EndGame(false); return; } // 최종 도달 = 방금 싸운 라운드
         CalculateRoundIncome(p); // 다음 라운드로 넘어가기 직전에 정산 (round는 방금 싸운 라운드)
-        round++;
+        if (round < StageManager.Rounds) round++; // 마지막 보스(30라운드)에서 졌는데 목숨이 남았으면 31라운드로 넘어가지 않고 보스를 다시 상대한다
         AddXp(AutoXp);
         Prep();
     }

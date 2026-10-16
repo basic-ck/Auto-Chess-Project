@@ -77,6 +77,18 @@ public partial class AutoChess
     void CamHome(float dur) => CamGo(HomePos, HomeLook, 40, dur);
 
     // ---------- 시연 진행 ----------
+    // 적 체력을 키워 전투를 길게 만든다(StartBattle 전에 호출: StartBattle 이 max 기준으로 hp 를 다시 계산함)
+    void DemoBoostFoes(float m)
+    {
+        foreach (var u in us) if (u.team == 1 && !u.temp) { u.max = (int)(u.max * m); u.hp = u.max; }
+    }
+
+    // 아군 체력만 키운다(보스의 전체 공격에 한 번에 쓰러지지 않게). Prep 이 hp 를 max 로 되돌리므로 Prep 전에 호출
+    void DemoBoostHp(float m)
+    {
+        foreach (var u in us) if (u.team == 0 && !u.temp) { u.max = (int)(u.max * m); u.hp = u.max; }
+    }
+
     void DemoBoost(float m)
     {
         foreach (var u in us) if (u.team == 0 && !u.temp) { u.max = (int)(u.max * m); u.hp = u.max; u.atk = (int)(u.atk * m); }
@@ -88,12 +100,17 @@ public partial class AutoChess
         while (battle && t < limit)
         {
             yield return null; t += DemoDt; heal -= DemoDt;
+            foreach (var u in us) if (u.Active && !u.temp && u.team == 0) { int floor = (int)(Cap(u) * .35f); if (u.hp < floor) u.hp = floor; } // 시연용: 아군은 매 프레임 체력 35% 아래로 쓰러지지 않게 보호
             if (t > limit * .6f && speed < 3) { speed = 3; ApplyTime(); } // 너무 길면 빨리 감기
             if (heal <= 0) // 시연용: 밀리면 아군을 조금씩 회복시켜 전투는 길고 치열하게, 결과는 승리로 끝나게 한다
             {
                 heal = .5f; int mine = 0, foe = 0;
                 foreach (var u in us) if (u.Active && !u.temp) { if (u.team == 0) mine += u.hp; else foe += u.hp; }
-                if (mine < foe * .95f) foreach (var u in us) if (u.Active && !u.temp && u.team == 0) u.hp = Mathf.Min(Cap(u), u.hp + (int)(u.max * .035f));
+                if (mine < foe * .95f)
+                {
+                    foreach (var u in us) if (u.Active && !u.temp && u.team == 0) u.hp = Mathf.Min(Cap(u), u.hp + (int)(u.max * .10f));
+                    foreach (var e in us.ToArray()) if (e.Active && !e.temp && e.team == 1) Dmg(e, Mathf.Max(1, (int)(e.max * .05f)), false, false, 0); // 정상 사망 처리를 거치도록 Dmg 사용
+                }
             }
         }
     }
@@ -117,7 +134,7 @@ public partial class AutoChess
 
         // 2) 준비 단계: 상점에서 유닛을 사서 배치
         hideHud = false; shopOpen = true;
-        CamGo(new Vector3(3.5f, 14f, -3.6f), new Vector3(3.5f, 0, 4.2f), 40, 1.2f); // 상점 패널이 가리지 않도록 전장을 화면 아래쪽에 둔다
+        CamGo(new Vector3(3.5f, 11.8f, -2.4f), new Vector3(3.5f, 0, 3.9f), 40, 1.2f); // 상점 패널이 가리지 않도록 전장을 화면 아래쪽에 둔다
         var modeled = new List<int>(); for (int id = 0; id < Kinds; id++) if (AutoChessVisualManager.I.HasUnit(id)) modeled.Add(id);
         if (modeled.Count >= 3) for (int i = 0; i < shop.Length; i++) shop[i] = modeled[Random.Range(0, modeled.Count)]; // 3D 모델이 있는 유닛으로 상점을 채운다
         yield return DWait(1.2f);
@@ -139,25 +156,28 @@ public partial class AutoChess
             SetPos(u, cols[ci], row, false);
             yield return DWait(.4f);
         }
-        DemoBoost(1.0f);
+        DemoBoost(1.0f); DemoBoostFoes(1.6f);
         yield return DWait(1.4f);
 
         // 3) 전투 1: 카메라가 전장을 돌며 보여 준다
         shopOpen = false; hideHud = true;
         StartBattle(); speed = 1; ApplyTime();
-        CamOrbit(new Vector3(3.5f, 0, 3.6f), 12f, 9f, 170, 225, 18f, 0.5f, 38);
+        CamOrbit(new Vector3(3.5f, 0, 3.7f), 8.6f, 6.4f, 165, 225, 18f, 0.6f, 38);
         yield return DemoWaitBattle(60f);
+        Debug.Log($"[DEMO] 전투1 종료: 목숨 {life}, 라운드 {round}");
         yield return DWait(.6f);
         hideHud = false; CamHome(1.8f);
         yield return DWait(3.2f);
 
         // 4) 보스전: 3스테이지급 라인업을 미리 구성해 스킬을 보여 준다
         foreach (var u in us.ToArray()) if (u.team == 0) { Destroy(u.go); us.Remove(u); }
-        int[,] slots = { { 2, 3, 3 }, { 3, 4, 3 }, { 2, 2, 3 }, { 2, 3, 1 }, { 2, 5, 1 }, { 2, 2, 1 }, { 2, 4, 1 }, { 3, 6, 0 } }; // 성급, x, z (앞줄이 먼저)
-        var pick = new List<int>(modeled); foreach (int id in new[] { 16, 25, 20, 22, 29, 28, 35, 21 }) if (!pick.Contains(id)) pick.Add(id);
-        for (int i = 0; i < slots.GetLength(0); i++) Spawn(0, pick[i % pick.Count], slots[i, 1], slots[i, 2], 1.15f, false, slots[i, 0]);
+        int[,] slots = { { 2, 3, 3 }, { 2, 4, 3 }, { 2, 2, 3 }, { 2, 3, 1 }, { 2, 5, 1 }, { 2, 2, 1 }, { 2, 4, 1 }, { 2, 6, 0 } }; // 성급, x, z (앞줄이 먼저)
+        var pick = new List<int> { 16, 25, 20, 22, 29, 28, 35, 21 }; // 보기 좋은 대표 유닛(강철 수호자, 용암 거인, 드래곤 나이트, 대성학자, 시간 술사, 별빛 사제, 천둥 주술사, 저격 명수)
+        foreach (int id in modeled) if (pick.Count < 8 && !pick.Contains(id)) pick.Add(id); // 모델이 없는 유닛이 있으면 있는 것으로 대체
+        for (int i = 0; i < slots.GetLength(0); i++) Spawn(0, pick[i % pick.Count], slots[i, 1], slots[i, 2], 0.85f, false, slots[i, 0]);
+        DemoBoostHp(3.5f);
         round = 30; level = 8; gold = 30; Prep();   // 최종 보스 3-10 제우스
-        hideHud = false; shopOpen = false;
+        hideHud = false; shopOpen = false; DemoBoostFoes(1.4f);
         yield return DWait(1.6f);
         hideHud = true; speed = 1;
         StartBattle(); speed = 1; ApplyTime();
@@ -165,7 +185,8 @@ public partial class AutoChess
         yield return DWait(9.2f);
         CamOrbit(new Vector3(3.5f, 0.3f, 4.4f), 11f, 8f, 150, 205, 16f, 0.6f, 40);
         yield return DemoWaitBattle(80f);
-        yield return DWait(1.4f);
+        Debug.Log($"[DEMO] 보스전 종료: 목숨 {life}, 클리어 {cleared}");
+        yield return DWait(.8f);
 
         // 5) 엔딩 카드
         yield return Fade(1, 1.2f);
