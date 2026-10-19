@@ -99,7 +99,8 @@ public class AutoChessAudio : MonoBehaviour
             case 3: n = Random.value < .5f ? "atk_fire1" : "atk_fire2"; v = .35f; break;
             case 8: n = "atk_wind"; v = .35f; break;
             case 6: n = "atk_warp"; v = .3f; break;
-            case 5: case 7: n = "atk_bubble"; break;
+            case 5: n = "atk_wind"; v = .3f; break;
+            case 7: n = "atk_warp"; v = .3f; break;
             case 9: n = "atk_gun"; v = .35f; break;
             default: n = "atk_punch"; break;
         }

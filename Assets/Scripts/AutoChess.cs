@@ -572,7 +572,7 @@ public partial class AutoChess : MonoBehaviour
         if (!quiet) t.flash = .15f;
         if (t.Alive) return;
         t.go.SetActive(false);
-        if (t.team == 1 && !t.temp) AutoChessAudio.Sfx(t.boss ? (round >= 20 ? "die_boss2" : "die_boss1") : "die_enemy", t.boss ? 1f : .4f, t.boss ? .3f : .12f);
+        if (t.team == 1 && t.boss) AutoChessAudio.Sfx(round >= 20 ? "die_boss2" : "die_boss1", 1f, .3f); // 보스 사망만 포효(일반 적은 소리 없음)
         if ((fx & Fx.Explode) != 0) // 태엽 쥐: 사망 시 주변 적에게 폭발
         {
             Ring(WP(t), 1.6f, C(1, .6f, .1f), .4f);
@@ -1389,7 +1389,7 @@ public partial class AutoChess : MonoBehaviour
                 var m = g[0];
                 for (int i = 1; i < 3; i++) { if (sel == g[i]) sel = m; Destroy(g[i].go); us.Remove(g[i]); }
                 m.star++; m.max = m.hp = (int)(m.max * 1.8f); m.atk = (int)(m.atk * 1.8f);
-                msg = $"{m.d.name} {m.star}성 합성!"; AutoChessAudio.Sfx("atk_bubble", .9f, .2f);
+                msg = $"{m.d.name} {m.star}성 합성!"; AutoChessAudio.Sfx("place", .9f, .2f);
                 id--; break; // 연쇄 합성 재검사
             }
     }
