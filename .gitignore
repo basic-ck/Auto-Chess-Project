@@ -42,3 +42,13 @@
 
 # 효과음은 다른 프로젝트에서 가져온 파일이라 공개 저장소에는 올리지 않는다(코드는 소리 파일이 없어도 동작)
 /Assets/Resources/Audio/
+
+# 바르코 3D 로 생성한 모델·텍스처는 약관 확인 전이라 저장소에 올리지 않는다(공개용 저장소에서 제외)
+/Assets/Resources/Visuals/Units/
+/Assets/Resources/Visuals/Units.meta
+/Assets/Resources/Visuals/UnitTextures/
+/Assets/Resources/Visuals/UnitTextures.meta
+/Assets/Resources/Visuals/Map/
+/Assets/Resources/Visuals/Map.meta
+/Assets/Resources/Visuals/MapTextures/
+/Assets/Resources/Visuals/MapTextures.meta
