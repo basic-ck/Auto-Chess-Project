@@ -150,6 +150,7 @@ public partial class AutoChess : MonoBehaviour
         AutoChessCapture.Init(); // -capture <폴더> 로 실행하면 프레임을 저장(트레일러 제작용)
         UnityEngine.SceneManagement.SceneManager.sceneLoaded += (s, _) => Build(s.name); // 메인 메뉴에서 넘어올 때마다 생성
         Build(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);           // 게임 씬에서 바로 시작한 경우
+        if (Arg("-sim") != null && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != GameScene) UnityEngine.SceneManagement.SceneManager.LoadScene(GameScene); // 시험 모드는 바로 게임 씬으로
     }
 
     static void Build(string scene)
@@ -182,6 +183,7 @@ public partial class AutoChess : MonoBehaviour
         Reset();
         if (PlayerPrefs.GetInt(HelpKey, 0) == 0) ToggleHelp(); // 처음 실행하면 도움말을 한 번 보여 준다
         DemoBegin(); // -demo 로 실행하면 자동 시연(AutoChessDemo.cs)
+        SimBegin();  // -sim 으로 실행하면 난이도 시험(AutoChessSim.cs)
     }
 
     void GoMenu() { Time.timeScale = 1f; UnityEngine.SceneManagement.SceneManager.LoadScene(MenuScene); }
@@ -287,9 +289,9 @@ public partial class AutoChess : MonoBehaviour
         SpawnEnemies();
     }
 
-    // 난이도: 적의 체력·공격력 배율 (쉬움 0.85 / 보통 1.0 / 어려움 1.25)
+    // 난이도: 적의 체력·공격력 배율 (쉬움 0.85 / 보통 1.0 / 어려움 1.15)
     static readonly string[] DiffName = { "쉬움", "보통", "어려움" };
-    static readonly float[] DiffMul = { .85f, 1f, 1.25f };
+    static readonly float[] DiffMul = { .85f, 1f, 1.15f };
     int diff = 1;
     bool Boss => StageManager.IsBoss(round); // 1-10, 2-10, 3-10 보스 라운드: 처치 시 +10G
 
@@ -298,7 +300,7 @@ public partial class AutoChess : MonoBehaviour
     static class StageManager
     {
         public const int Rounds = 30;
-        public const float BossScale = 1.8f, BossHp = 1.5f; // 보스는 크기 1.8배, 추가 체력 1.5배
+        public const float BossScale = 1.8f, BossHp = 1.3f; // 보스는 크기 1.8배, 추가 체력 1.3배
         public static readonly int[] BossId = { (int)UnitId.RockSentinel, (int)UnitId.MedusaQueen, (int)UnitId.Zeus };
         public static readonly int[] BossStar = { 2, 2, 2 };
 
@@ -309,10 +311,10 @@ public partial class AutoChess : MonoBehaviour
             /* 1-1 */ new[] { 0,1,1 },
             /* 1-2 */ new[] { 0,1,1, 1,1,1 },
             /* 1-3 */ new[] { 0,1,2, 1,1,1 },
-            /* 1-4 */ new[] { 4,1,1, 0,1,1, 1,1,1, 3,1,1 },
-            /* 1-5 */ new[] { 0,1,2, 1,1,2, 2,1,1 },
-            /* 1-6 */ new[] { 4,1,1, 7,1,1, 1,1,2, 3,1,1 },
-            /* 1-7 */ new[] { 0,1,2, 7,1,1, 1,1,2, 9,1,1 },
+            /* 1-4 */ new[] { 4,1,1, 0,1,1, 1,1,1 },
+            /* 1-5 */ new[] { 0,1,2, 1,1,1, 2,1,1 },
+            /* 1-6 */ new[] { 4,1,1, 7,1,1, 1,1,1, 3,1,1 },
+            /* 1-7 */ new[] { 0,1,1, 7,1,1, 1,1,2, 9,1,1 },
             /* 1-8 */ new[] { 4,1,2, 7,1,1, 3,1,2, 6,1,1 },
             /* 1-9 */ new[] { 0,1,2, 4,1,1, 1,1,2, 3,1,1 },
             /* 1-10 보스 */ new[] { 0,1,1, 1,1,2 },
@@ -326,7 +328,7 @@ public partial class AutoChess : MonoBehaviour
             /* 2-8 */ new[] { 25,1,1, 26,1,1, 14,1,1, 23,1,1, 22,1,1, 27,1,1 },
             /* 2-9 */ new[] { 20,1,1, 25,1,1, 18,1,1, 17,1,1, 21,1,1, 28,1,1, 27,1,1 },
             /* 2-10 보스 */ new[] { 16,1,1, 23,1,1, 21,1,1 },
-            /* 3-1 */ new[] { 25,1,1, 26,1,1, 16,1,1, 22,1,1, 23,1,1, 27,1,1, 29,1,1 },
+            /* 3-1 */ new[] { 25,1,1, 26,1,1, 16,1,1, 22,1,1, 23,1,1, 27,1,1 },
             /* 3-2 */ new[] { 20,1,1, 25,1,1, 31,1,1, 17,1,1, 24,1,1, 27,1,1, 28,1,1 },
             /* 3-3 */ new[] { 26,1,1, 14,2,1, 31,1,1, 21,1,1, 22,1,1, 35,1,1, 12,1,1 },
             /* 3-4 */ new[] { 31,1,1, 25,2,1, 33,1,1, 23,1,1, 22,1,1, 34,1,1, 27,1,1 },
@@ -335,7 +337,7 @@ public partial class AutoChess : MonoBehaviour
             /* 3-7 */ new[] { 36,1,1, 26,2,1, 33,1,1, 35,2,1, 21,2,1, 28,1,1, 27,2,1 },
             /* 3-8 */ new[] { 36,1,1, 31,2,1, 14,2,1, 38,1,1, 22,2,1, 34,1,1, 35,1,1 },
             /* 3-9 */ new[] { 36,2,1, 37,1,1, 33,1,1, 31,2,1, 38,1,1, 29,2,1, 35,2,1, 28,2,1 },
-            /* 3-10 보스 */ new[] { 36,1,1, 31,2,1, 33,1,1, 35,1,1, 27,2,1 },
+            /* 3-10 보스 */ new[] { 36,1,1, 31,2,1, 33,1,1, 35,1,1 },
         };
 
         public static bool IsBoss(int round) => round % 10 == 0;
@@ -879,7 +881,7 @@ public partial class AutoChess : MonoBehaviour
         "• 유닛은 가까운 적을 자동으로 공격하고, 마나(체력바 밑의 파란 막대)가 가득 차면 스킬을 씁니다. 스킬 설명은 상점 카드와 유닛 정보창에 있습니다.\n" +
         "• 한쪽이 전멸하면 끝납니다. 100초가 넘으면 남은 체력 합이 많은 쪽이 이깁니다.\n" +
         "• 아래 [배속 ×1 / ×2 / ×3] 버튼으로 전투 속도를 바꿀 수 있습니다(준비 단계는 항상 1배). 위쪽 [포기]를 누르면 확인 후 게임을 끝냅니다.\n" +
-        "• 난이도(오른쪽 위)는 준비 단계에서 바꿀 수 있고, 적의 체력·공격력이 쉬움 ×0.85 · 보통 ×1.0 · 어려움 ×1.25가 됩니다.\n\n" +
+        "• 난이도(오른쪽 위)는 준비 단계에서 바꿀 수 있고, 적의 체력·공격력이 쉬움 ×0.85 · 보통 ×1.0 · 어려움 ×1.15가 됩니다.\n\n" +
         "<b><color=#ffd966>조작 요약</color></b>\n" +
         "클릭 = 선택·정보  /  끌어서 놓기 = 이동·교환  /  H = 도움말 열기·닫기  /  ESC = 도움말·포기 확인창 닫기";
 

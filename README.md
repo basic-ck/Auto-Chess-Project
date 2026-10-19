@@ -39,6 +39,13 @@
 **소스에서 실행**: Unity **6000.3.21f1** 으로 프로젝트를 열고 `Assets/Scenes/MainMenu.unity` 를 연 뒤 Play.
 (`Assets/Scenes/GameScene.unity` 에서 바로 시작해도 된다.)
 
+### 난이도 시험 모드 (개발용)
+
+```
+SpiritsAndGiants.exe -batchmode -nographics -sim 40 -logFile sim.log
+```
+화면 없이 봇이 난이도 3종을 각 40판 돌려 라운드별 승률을 로그(`[SIM]` 줄)에 남긴다. 몇 초면 끝난다. 적 구성(`StageManager.Waves`)을 바꾼 뒤 바로 측정할 때 쓴다.
+
 ### 자동 시연(트레일러) 모드
 
 ```
