@@ -18,7 +18,7 @@ public class MainMenu : MonoBehaviour
 
     // 에디터가 컴포넌트의 비공개 값까지 스크립트 재컴파일 뒤에도 보존해서, 예전 텍스처가 남지 않게 저장 대상에서 뺀다
     [System.NonSerialized] Texture2D bg, logo, sky, edge, dot, boxN, boxH, boxA, boxSel;
-    [System.NonSerialized] GUIStyle title, sub, label, btn, tog, small;
+    [System.NonSerialized] GUIStyle title, sub, label, btn, tog, small, smallBtn;
 
     void Start()
     {
@@ -143,6 +143,7 @@ public class MainMenu : MonoBehaviour
         GUI.enabled = Application.isPlaying; // Play 전에는 보기만 가능(버튼 비활성)
         if (GUI.Button(new Rect(x, y, bw, bh), "게임 시작", btn))
         {
+            AutoChessAudio.Click();
             PlayerPrefs.SetInt(AutoChess.DiffKey, diff); PlayerPrefs.Save();
             SceneManager.LoadScene(AutoChess.GameScene);
         }
@@ -150,14 +151,21 @@ public class MainMenu : MonoBehaviour
         Shadowed(new Rect(x, y + bh + 14 * s, bw, 22 * s), "난이도", label, label.normal.textColor);
         float tw = (bw - 2 * 6 * s) / 3, ty2 = y + bh + 40 * s, th = 36 * s;
         for (int i = 0; i < 3; i++)
-            if (GUI.Toggle(new Rect(x + i * (tw + 6 * s), ty2, tw, th), diff == i, DiffName[i], tog)) diff = i;
+            if (GUI.Toggle(new Rect(x + i * (tw + 6 * s), ty2, tw, th), diff == i, DiffName[i], tog)) { if (diff != i) AutoChessAudio.Click(); diff = i; }
         float ey = ty2 + th + 22 * s;
 #if UNITY_EDITOR
-        if (GUI.Button(new Rect(x, ey, bw, bh), "종료", btn)) UnityEditor.EditorApplication.isPlaying = false;
+        if (GUI.Button(new Rect(x, ey, bw, bh), "종료", btn)) { AutoChessAudio.Click(); UnityEditor.EditorApplication.isPlaying = false; }
 #else
-        if (GUI.Button(new Rect(x, ey, bw, bh), "종료", btn)) Application.Quit();
+        if (GUI.Button(new Rect(x, ey, bw, bh), "종료", btn)) { AutoChessAudio.Click(); Application.Quit(); }
 #endif
         GUI.enabled = true;
+        if (Application.isPlaying)
+        {
+            smallBtn ??= new GUIStyle(btn);
+            smallBtn.fontSize = Mathf.RoundToInt(15 * s);
+            if (GUI.Button(new Rect(12, H - 40 * s - 8, 150 * s, 34 * s), AutoChessAudio.Muted ? "소리 꺼짐 (M)" : "소리 켜짐 (M)", smallBtn)) { AutoChessAudio.Muted = !AutoChessAudio.Muted; AutoChessAudio.Click(); }
+            if (Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.M) { AutoChessAudio.Muted = !AutoChessAudio.Muted; Event.current.Use(); }
+        }
 
         small = Style(small, Mathf.RoundToInt(12 * s), new Color(1, 1, 1, .55f), FontStyle.Normal, TextAnchor.LowerRight);
         GUI.Label(new Rect(W - 220 * s - 12, H - 28 * s, 220 * s, 22 * s), "v" + Application.version, small);

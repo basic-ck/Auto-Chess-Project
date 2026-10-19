@@ -146,6 +146,7 @@ public partial class AutoChess : MonoBehaviour
     [RuntimeInitializeOnLoadMethod]
     static void Boot()
     {
+        AutoChessAudio.Init(); // 효과음 재생기
         AutoChessCapture.Init(); // -capture <폴더> 로 실행하면 프레임을 저장(트레일러 제작용)
         UnityEngine.SceneManagement.SceneManager.sceneLoaded += (s, _) => Build(s.name); // 메인 메뉴에서 넘어올 때마다 생성
         Build(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);           // 게임 씬에서 바로 시작한 경우
@@ -522,6 +523,7 @@ public partial class AutoChess : MonoBehaviour
     void Strike(U u, U tgt)
     {
         Face(u, tgt.x, tgt.z);
+        AutoChessAudio.Attack(u.d.job);
         int dmg = BaseDmg(u);
         bool crit = (u.d.fx & Fx.Crit) != 0 && Random.value < .3f;
         if (crit) dmg *= 2;
@@ -570,6 +572,7 @@ public partial class AutoChess : MonoBehaviour
         if (!quiet) t.flash = .15f;
         if (t.Alive) return;
         t.go.SetActive(false);
+        if (t.team == 1 && !t.temp) AutoChessAudio.Sfx(t.boss ? (round >= 20 ? "die_boss2" : "die_boss1") : "die_enemy", t.boss ? 1f : .4f, t.boss ? .3f : .12f);
         if ((fx & Fx.Explode) != 0) // 태엽 쥐: 사망 시 주변 적에게 폭발
         {
             Ring(WP(t), 1.6f, C(1, .6f, .1f), .4f);
@@ -606,6 +609,7 @@ public partial class AutoChess : MonoBehaviour
         var tgt = Pick(u);
         if (tgt == null && u.d.sk != Sk.Heal && u.d.sk != Sk.HealAll && u.d.sk != Sk.Ward && u.d.sk != Sk.Invuln) return false;
         if (tgt != null) Face(u, tgt.x, tgt.z);
+        AutoChessAudio.Sfx("atk_blast", .8f, .15f); // 스킬 발동
         var foes = Foes(u);
         int dmgBase = BaseDmg(u);
         switch (u.d.sk)
@@ -731,6 +735,7 @@ public partial class AutoChess : MonoBehaviour
         if (ev.type == EventType.KeyDown && !over)
         {
             if (quitConfirm) { if (ev.keyCode == KeyCode.Escape) { quitConfirm = false; ApplyTime(); ev.Use(); } } // ESC=포기 취소
+            else if (ev.keyCode == KeyCode.M) { AutoChessAudio.Muted = !AutoChessAudio.Muted; ev.Use(); } // M=소리 켜기/끄기
             else if (ev.keyCode == KeyCode.T && AutoChessThemes.I != null) { AutoChessThemes.I.Cycle(); ev.Use(); } // T=배경 테마 바꾸기
             else if (ev.keyCode == KeyCode.H || (helpOpen && ev.keyCode == KeyCode.Escape)) { ToggleHelp(); ev.Use(); } // H=도움말 열기/닫기, ESC=닫기
         }
@@ -792,12 +797,13 @@ public partial class AutoChess : MonoBehaviour
         if (GUI.Button(new Rect(10, H - 44, 130, 36), "경험치 (4G)")) BuyXp();
         GUI.enabled = !battle;
         if (GUI.Button(new Rect(W / 2 - 70, H - 44, 140, 36), "전투 시작")) StartBattle();
-        if (GUI.Button(new Rect(W - 140, H - 44, 130, 36), shopOpen ? "상점 닫기" : "상점 열기")) shopOpen = !shopOpen;
+        if (GUI.Button(new Rect(W - 140, H - 44, 130, 36), shopOpen ? "상점 닫기" : "상점 열기")) { shopOpen = !shopOpen; AutoChessAudio.Click(); }
         GUI.enabled = true;
-        if (GUI.Button(new Rect(150, H - 44, 100, 36), "도움말 (H)")) ToggleHelp(); // 전투 중에도 열 수 있다(열면 게임이 멈춤)
-        if (GUI.Button(new Rect(W / 2 + 80, H - 44, 90, 36), $"배속 ×{speed}")) { speed = speed % 3 + 1; ApplyTime(); } // 1→2→3→1, 전투 중에만 적용
+        if (GUI.Button(new Rect(150, H - 44, 100, 36), "도움말 (H)")) { ToggleHelp(); AutoChessAudio.Click(); } // 전투 중에도 열 수 있다(열면 게임이 멈춤)
+        if (GUI.Button(new Rect(W / 2 + 80, H - 44, 90, 36), $"배속 ×{speed}")) { speed = speed % 3 + 1; ApplyTime(); AutoChessAudio.Click(); } // 1→2→3→1, 전투 중에만 적용
+        if (GUI.Button(new Rect(W - 495, 6, 130, 24), AutoChessAudio.Muted ? "소리 꺼짐 (M)" : "소리 켜짐 (M)")) { AutoChessAudio.Muted = !AutoChessAudio.Muted; AutoChessAudio.Click(); }
         if (AutoChessThemes.I != null && GUI.Button(new Rect(W - 355, 6, 130, 24), $"배경 (T): {AutoChessThemes.I.Index + 1}/{AutoChessThemes.Count}")) AutoChessThemes.I.Cycle();
-        if (GUI.Button(new Rect(W - 215, 6, 100, 24), "포기")) { quitConfirm = true; ApplyTime(); } // 바로 끝내지 않고 확인창을 띄운다
+        if (GUI.Button(new Rect(W - 215, 6, 100, 24), "포기")) { quitConfirm = true; ApplyTime(); AutoChessAudio.Click(); } // 바로 끝내지 않고 확인창을 띄운다
 
         if (shopOpen && !battle) DrawShop(W); // 상점이 열려 있으면 옆 패널은 숨김(겹침 방지)
         else { DrawSynergy(); DrawInfo(W); }
@@ -899,7 +905,7 @@ public partial class AutoChess : MonoBehaviour
         if (GUI.Button(new Rect(rs.x + rs.width / 2 - 60, rs.y + 140, 120, 30), "리롤 (1G)"))
         {
             if (gold < 1) msg = "골드 부족";
-            else { gold--; msg = ""; Roll(); }
+            else { gold--; msg = ""; Roll(); AutoChessAudio.Click(); }
         }
     }
 
@@ -1048,7 +1054,7 @@ public partial class AutoChess : MonoBehaviour
         if (o == null)
         {
             if (!toBench && u.bench && FieldCount() >= level) { msg = $"출전 한도 (레벨 {level})"; return false; }
-            SetPos(u, x, z, toBench);
+            SetPos(u, x, z, toBench); AutoChessAudio.Place();
         }
         else
         {
@@ -1090,7 +1096,7 @@ public partial class AutoChess : MonoBehaviour
             u.mana = u.stun = u.slow = u.silence = u.poison = u.invuln = u.buff = 0; u.acc = 0;
         }
         foreach (var u in new List<U>(us)) if ((u.d.fx & Fx.Infiltrate) != 0 && u.Active) Teleport(u);
-        tickNo = 0; msg = ""; incomeLog = ""; battle = true; shopOpen = false;
+        tickNo = 0; msg = ""; incomeLog = ""; battle = true; shopOpen = false; AutoChessAudio.Click();
         ApplyTime(); // 선택한 배속 적용
         ShowBanner($"[STAGE {StageManager.Label(round)}]", Boss ? new Color(1, .5f, .2f) : Color.white, 1.5f);
     }
@@ -1318,7 +1324,7 @@ public partial class AutoChess : MonoBehaviour
     void BuyXp()
     {
         if (gold < 4) { msg = "골드 부족"; return; }
-        gold -= 4; msg = ""; AddXp(4);
+        gold -= 4; msg = ""; AddXp(4); AutoChessAudio.Click();
     }
 
     // 상점: 플레이어 레벨의 확률표로 코스트를 뽑고, 그 코스트의 유닛 중 무작위 선택
@@ -1342,7 +1348,7 @@ public partial class AutoChess : MonoBehaviour
         for (int i = 0; i < N && slot < 0; i++) if (UnitAt(i, -1, true) == null) slot = i;
         bool merges = us.FindAll(u => u.team == 0 && u.id == id && u.star == 1).Count >= 2; // 사면 바로 3개가 모여 합성됨
         if (slot < 0 && !merges) { msg = "대기석이 가득 찼습니다"; return false; }
-        gold -= Dt(id).cost;
+        gold -= Dt(id).cost; AutoChessAudio.Place();
         var nu = Spawn(0, id, slot < 0 ? N : slot, -1, 1, true); // 가득 찼으면 임시로 대기석 밖(x=8)에 생성
         msg = ""; Merge();
         if (us.Contains(nu) && nu.x >= N) // 합성 후 살아남은 임시 유닛은 비워진 대기석 칸으로 이동
@@ -1366,7 +1372,7 @@ public partial class AutoChess : MonoBehaviour
     // 판매는 전투 중에도 가능. 전투 중이면 hp=0으로 만들어 날아가는 투사체·스킬이 사라진 유닛을 건드리지 않게 한다.
     void Sell(U u)
     {
-        gold += Price(u);
+        gold += Price(u); AutoChessAudio.Click();
         u.hp = 0;
         Destroy(u.go); us.Remove(u); sel = null; msg = "";
     }
@@ -1383,7 +1389,7 @@ public partial class AutoChess : MonoBehaviour
                 var m = g[0];
                 for (int i = 1; i < 3; i++) { if (sel == g[i]) sel = m; Destroy(g[i].go); us.Remove(g[i]); }
                 m.star++; m.max = m.hp = (int)(m.max * 1.8f); m.atk = (int)(m.atk * 1.8f);
-                msg = $"{m.d.name} {m.star}성 합성!";
+                msg = $"{m.d.name} {m.star}성 합성!"; AutoChessAudio.Sfx("atk_bubble", .9f, .2f);
                 id--; break; // 연쇄 합성 재검사
             }
     }

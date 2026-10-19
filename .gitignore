@@ -39,3 +39,6 @@
 /Builds/
 /TrailerFrames/
 /Trailer/
+
+# 효과음은 다른 프로젝트에서 가져온 파일이라 공개 저장소에는 올리지 않는다(코드는 소리 파일이 없어도 동작)
+/Assets/Resources/Audio/

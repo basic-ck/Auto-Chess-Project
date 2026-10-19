@@ -259,7 +259,7 @@ public class AutoChessCapture : MonoBehaviour
         return null;
     }
 
-    public static void Finish() { Active = false; Application.Quit(); }
+    public static void Finish() { Active = false; if (inst != null) AutoChessAudio.DumpEvents(inst.dir); Application.Quit(); }
 
     IEnumerator Start()
     {
